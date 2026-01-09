@@ -1,6 +1,7 @@
 import { DesignSystem, Section, ExtractedWebsiteData } from '../../types';
 import { STEPS_CONFIG } from '../../config/aiConfig';
 import { FRONTEND_DESIGN_GUIDELINES, getAiClient } from './shared';
+import { normalizeHtmlResponse } from './normalize';
 
 export const generateSectionImage = async (
   section: Section,
@@ -344,8 +345,7 @@ export const generateSectionCode = async (
     console.log(`[GeminiService] Response received for ${section.name}`);
 
     let code = response.text || '';
-    // Strip markdown code blocks if present
-    code = code.replace(/```html/g, '').replace(/```/g, '').trim();
+    code = normalizeHtmlResponse(code);
 
     if (!code) {
       console.warn(`[GeminiService] Empty code returned for ${section.name}`);

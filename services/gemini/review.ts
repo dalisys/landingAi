@@ -1,6 +1,7 @@
 import { Type } from '@google/genai';
 import { CodeReview, DesignSystem, ExtractedWebsiteData, Section } from '../../types';
 import { STEPS_CONFIG } from '../../config/aiConfig';
+import { normalizeHtmlResponse } from './normalize';
 import { getAiClient } from './shared';
 
 export const reviewGeneratedCode = async (
@@ -158,8 +159,7 @@ export const applyCodeFixes = async (
   });
 
   let code = response.text || '';
-  // Strip markdown code blocks if present
-  code = code.replace(/```html/g, '').replace(/```/g, '').trim();
+  code = normalizeHtmlResponse(code);
 
   return code;
 };

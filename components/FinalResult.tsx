@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ProjectState } from '../types';
 import { Code, Eye, Download, Check } from 'lucide-react';
 import JSZip from 'jszip';
+import { normalizeHtmlResponse } from '../services/gemini/normalize';
 
 interface Props {
   projectState: ProjectState;
@@ -25,7 +26,7 @@ export const FinalResult: React.FC<Props> = ({ projectState }) => {
     </style>
 </head>
 <body class="bg-white">
-    ${projectState.sections.map(s => `<!-- Section: ${s.name} -->\n${s.generatedCode}`).join('\n\n')}
+    ${projectState.sections.map(s => `<!-- Section: ${s.name} -->\n${normalizeHtmlResponse(s.generatedCode || '')}`).join('\n\n')}
     
     <script>
       lucide.createIcons();
