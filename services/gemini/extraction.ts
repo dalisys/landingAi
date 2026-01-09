@@ -9,13 +9,13 @@ export const extractWebsiteData = async (
 ): Promise<ExtractedWebsiteData> => {
   const ai = getAiClient();
 
-  const prompt = `
+  const buildPrompt = (strict: boolean) => `
     You are an expert UX Researcher and Content Analyst.
-    Analyze the provided screenshots of a landing page in detail and extract ALL relevant information.
+    Analyze the provided screenshots of a landing page in detail and extract all relevant information.
 
     ${urlContext ? `Context URL: ${urlContext}` : ''}
 
-    Your task is to thoroughly extract and document:
+    Your task is to extract and document:
     1. Business Information: Name, tagline, description, value proposition
     2. Features & Offerings: List all features, products, or services mentioned
     3. Pricing: Extract any pricing plans, tiers, or cost information
@@ -24,13 +24,12 @@ export const extractWebsiteData = async (
     6. Social Proof: Testimonials, reviews, customer logos, statistics
     7. Calls to Action: All CTAs found on the page
 
-    Be exhaustive and detailed. Extract all text content, visual elements, and structural patterns.
-    This data will be used to inform a complete redesign.
+    ${strict ? 'Keep text fields concise (1 sentence max) and ensure all strings are properly escaped.' : 'Be detailed but avoid verbosity.'}
 
-    Return the result in strict JSON format.
+    Return ONLY strict JSON. No markdown, no commentary.
   `;
 
-  const parts: any[] = [{ text: prompt }];
+  const parts: any[] = [{ text: buildPrompt(false) }];
 
   // Add all screenshots to parts
   screenshots.forEach((base64Data) => {
@@ -47,117 +46,125 @@ export const extractWebsiteData = async (
     });
   });
 
-  const response = await ai.models.generateContent({
-    model: STEPS_CONFIG.extractWebsiteData.model, // Use configured model
-    contents: { parts },
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      businessName: { type: Type.STRING },
+      tagline: { type: Type.STRING },
+      description: { type: Type.STRING },
+      features: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+          },
+        },
+      },
+      pricing: {
         type: Type.OBJECT,
         properties: {
-          businessName: { type: Type.STRING },
-          tagline: { type: Type.STRING },
-          description: { type: Type.STRING },
-          features: {
+          plans: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 name: { type: Type.STRING },
-                description: { type: Type.STRING },
-              },
-            },
-          },
-          pricing: {
-            type: Type.OBJECT,
-            properties: {
-              plans: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    name: { type: Type.STRING },
-                    price: { type: Type.STRING },
-                    features: {
-                      type: Type.ARRAY,
-                      items: { type: Type.STRING },
-                    },
-                  },
+                price: { type: Type.STRING },
+                features: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
                 },
               },
             },
           },
-          designAnalysis: {
-            type: Type.OBJECT,
-            properties: {
-              colorScheme: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-              typographyStyle: { type: Type.STRING },
-              layoutPattern: { type: Type.STRING },
-              visualStyle: { type: Type.STRING },
-            },
-            required: [
-              'colorScheme',
-              'typographyStyle',
-              'layoutPattern',
-              'visualStyle',
-            ],
+        },
+      },
+      designAnalysis: {
+        type: Type.OBJECT,
+        properties: {
+          colorScheme: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
           },
-          structureAnalysis: {
-            type: Type.OBJECT,
-            properties: {
-              sections: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    type: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                  },
-                },
-              },
-              navigationItems: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
-            required: ['sections', 'navigationItems'],
-          },
-          testimonials: {
+          typographyStyle: { type: Type.STRING },
+          layoutPattern: { type: Type.STRING },
+          visualStyle: { type: Type.STRING },
+        },
+        required: [
+          'colorScheme',
+          'typographyStyle',
+          'layoutPattern',
+          'visualStyle',
+        ],
+      },
+      structureAnalysis: {
+        type: Type.OBJECT,
+        properties: {
+          sections: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
-                author: { type: Type.STRING },
-                content: { type: Type.STRING },
-                role: { type: Type.STRING },
+                type: { type: Type.STRING },
+                description: { type: Type.STRING },
               },
             },
           },
-          callsToAction: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-          },
-          socialProof: {
+          navigationItems: {
             type: Type.ARRAY,
             items: { type: Type.STRING },
           },
         },
-        required: [
-          'features',
-          'designAnalysis',
-          'structureAnalysis',
-          'callsToAction',
-        ],
+        required: ['sections', 'navigationItems'],
+      },
+      testimonials: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            author: { type: Type.STRING },
+            content: { type: Type.STRING },
+            role: { type: Type.STRING },
+          },
+        },
+      },
+      callsToAction: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
+      },
+      socialProof: {
+        type: Type.ARRAY,
+        items: { type: Type.STRING },
       },
     },
-  });
+    required: [
+      'features',
+      'designAnalysis',
+      'structureAnalysis',
+      'callsToAction',
+    ],
+  };
+
+  const generate = (strict: boolean) =>
+    ai.models.generateContent({
+      model: STEPS_CONFIG.extractWebsiteData.model,
+      contents: { parts: [{ text: buildPrompt(strict) }, ...parts.slice(1)] },
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema,
+        temperature: strict ? 0.1 : 0.2,
+        maxOutputTokens: strict ? 4096 : 8192,
+      },
+    });
+
+  const response = await generate(false);
 
   if (!response.text) throw new Error('No data extracted');
 
   try {
+    console.log('Extraction response length:', response.text.length);
     const parsed = JSON.parse(response.text);
     console.log('Extracted website data:', parsed);
 
@@ -228,11 +235,21 @@ export const extractWebsiteData = async (
 
     return parsed;
   } catch (parseError) {
-    console.error('Failed to parse extraction response:', response.text);
-    throw new Error(
-      `Failed to parse extraction: ${
-        parseError instanceof Error ? parseError.message : 'Unknown error'
-      }`
-    );
+    console.error('Failed to parse extraction response. Retrying with stricter prompt.');
+    try {
+      const retry = await generate(true);
+      if (!retry.text) throw new Error('No data extracted');
+      console.log('Extraction retry response length:', retry.text.length);
+      const parsedRetry = JSON.parse(retry.text);
+      console.log('Extracted website data (retry):', parsedRetry);
+      return parsedRetry;
+    } catch (retryError) {
+      console.error('Failed to parse extraction response:', response.text);
+      throw new Error(
+        `Failed to parse extraction: ${
+          retryError instanceof Error ? retryError.message : 'Unknown error'
+        }`
+      );
+    }
   }
 };

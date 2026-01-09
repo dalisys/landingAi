@@ -7,15 +7,16 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
+      strictPort: false,
       host: "0.0.0.0",
       proxy: {
         "/api": {
-          target: "http://localhost:3001",
+          target: "http://localhost:3002",
           changeOrigin: true,
           secure: false,
         },
         "/generated-images": {
-          target: "http://localhost:3001",
+          target: "http://localhost:3002",
           changeOrigin: true,
           secure: false,
         },
