@@ -1,0 +1,5 @@
+{
+  "name": "Landing Page Redesigner AI",
+  "description": "An intelligent agent that redesigns landing pages by analyzing screenshots, creating a UX plan, generating new visual assets, and writing the frontend code.",
+  "requestFramePermissions": []
+}

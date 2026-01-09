@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/dali/.cache/puppeteer/chrome/**)",
+      "Bash(node -e \"import(''puppeteer'').then(p => console.log(p.executablePath()))\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
